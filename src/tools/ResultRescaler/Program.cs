@@ -18,6 +18,7 @@ namespace ResultsComparer
     public class Program
     {
         private const string FullBdnJsonFileExtension = "full.json";
+        private const string RescaledBdnJsonFileExtension = "rescaled.json";
 
         public static void Main(string[] args)
         {
@@ -108,7 +109,7 @@ namespace ResultsComparer
                 throw new ArgumentException($"Provided paths contained no {FullBdnJsonFileExtension} files.");
 
             var baseResults = baseFiles.Select(ReadFromFile);
-            var diffResults = diffFiles.ToDictionary(x => x, ReadFromFile);
+            var diffResults = diffFiles.ToDictionary(Path.GetFileName, ReadFromFile);
 
             var benchmarkIdToDiffResults = diffResults.Values
                 .SelectMany(result => result.Benchmarks.Where(x => x.Statistics != null))
@@ -133,7 +134,7 @@ namespace ResultsComparer
                     benchmark.RescaleValues(scaleFactor);
                 }
 
-                WriteToFile(diffResult.Value, Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, "rescaled.json")));
+                WriteToFile(diffResult.Value, Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension)));
             }
 
             return baselineResults;
@@ -143,10 +144,9 @@ namespace ResultsComparer
         {
             if (Directory.Exists(path))
                 return Directory.GetFiles(path, $"*{FullBdnJsonFileExtension}", SearchOption.AllDirectories);
-            else if (File.Exists(path) || !path.EndsWith(FullBdnJsonFileExtension))
+            if (File.Exists(path) && path.EndsWith(FullBdnJsonFileExtension))
                 return new[] { path };
-            else
-                throw new FileNotFoundException($"Provided path does NOT exist or is not a {path} file", path);
+            throw new FileNotFoundException($"Provided path does NOT exist or is not a {path} file", path);
         }
 
         // code and magic values taken from BenchmarkDotNet.Analysers.MultimodalDistributionAnalyzer
