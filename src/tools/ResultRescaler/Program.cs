@@ -108,9 +108,9 @@ namespace ResultsComparer
                 throw new ArgumentException($"Provided paths contained no {FullBdnJsonFileExtension} files.");
 
             var baseResults = baseFiles.Select(ReadFromFile);
-            var diffResults = diffFiles.Select(ReadFromFile).ToList();
+            var diffResults = diffFiles.ToDictionary(x => x, ReadFromFile);
 
-            var benchmarkIdToDiffResults = diffResults
+            var benchmarkIdToDiffResults = diffResults.Values
                 .SelectMany(result => result.Benchmarks.Where(x => x.Statistics != null))
                 .Where(benchmarkResult => args.Baselines.Contains(benchmarkResult.MethodTitle))
                 .ToDictionary(benchmarkResult => benchmarkResult.FullName, benchmarkResult => benchmarkResult);
@@ -128,12 +128,12 @@ namespace ResultsComparer
             
             foreach (var diffResult in diffResults) 
             {
-                foreach (var benchmark in diffResult.Benchmarks)
+                foreach (var benchmark in diffResult.Value.Benchmarks)
                 {
                     benchmark.RescaleValues(scaleFactor);
                 }
 
-                WriteToFile(diffResult, Path.Combine(args.OutputPath, $"{diffResult.Title}-report-rescaled.json"));
+                WriteToFile(diffResult.Value, Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, "rescaled.json")));
             }
 
             return baselineResults;
