@@ -23,6 +23,9 @@ namespace ResultsComparer
         [Option('b', "baselines", HelpText = "The name of the categories that is used as a 'stable-baselines'.")]
         public IEnumerable<string> Baselines { get; set; }
 
+        [Option('m', "medians", HelpText = "Use the medians for determining the scale factor (default is 'means').")]
+        public bool UseMedians { get; set; }
+
 
         [Usage(ApplicationAlias = "")]
         public static IEnumerable<Example> Examples

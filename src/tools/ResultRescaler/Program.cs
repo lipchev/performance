@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -25,29 +27,52 @@ namespace ResultsComparer
             // we print a lot of numbers here and we want to make it always in invariant way
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
-            Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(Compare);
+            Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(Rescale);
         }
 
-        private static void Compare(CommandLineOptions args)
+        private static void Rescale(CommandLineOptions args)
         {
-            var notSame = RescaleResults(args);
+            var baseFiles = GetFilesToParse(args.BasePath);
+            var diffFiles = GetFilesToParse(args.DiffPath);
+
+            if (!baseFiles.Any() || !diffFiles.Any())
+                throw new ArgumentException($"Provided paths contained no {FullBdnJsonFileExtension} files.");
+
+            var baseResults = baseFiles.Select(ReadFromFile);
+            var diffResults = diffFiles.ToDictionary(Path.GetFileName, ReadFromFile);
+
+            var notSame = CompareResults(baseResults, diffResults.Values, args.Baselines);
 
             if (!notSame.Any())
             {
-                Console.WriteLine($"No differences found between the benchmark results.");
+                Console.WriteLine("No common base-line found between the benchmark results.");
                 return;
             }
 
-            PrintSummary(notSame);
+            PrintSummary(notSame, args.UseMedians);
 
             PrintTable(notSame, args);
+            
+            var scaleFactor = notSame.Average(result => GetRatio(result, args.UseMedians));
+            
+            foreach (var diffResult in diffResults) 
+            {
+                foreach (var benchmark in diffResult.Value.Benchmarks)
+                {
+                    benchmark.RescaleValues(scaleFactor);
+                }
+
+                var resultFilePath = Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
+                WriteToFile(diffResult.Value, resultFilePath);
+                Console.WriteLine("Rescaled results saved to '{0}'.", resultFilePath);
+            }
         }
         
 
-        private static void PrintSummary((string id, Benchmark baseResult, Benchmark diffResult)[] notSame)
+        private static void PrintSummary((string id, Benchmark baseResult, Benchmark diffResult)[] notSame, bool medians)
         {
-            var better = notSame.Select(GetRatio).Where(x=> x > 1 && !double.IsPositiveInfinity(x)).ToList();
-            var worse = notSame.Select(GetRatio).Where(x => x < 1 && !double.IsNegativeInfinity(x)).ToList();
+            var better = notSame.Select(result => GetRatio(result, medians)).Where(x=> x > 1 && !double.IsPositiveInfinity(x)).ToList();
+            var worse = notSame.Select(result => GetRatio(result, medians)).Where(x => x < 1 && !double.IsNegativeInfinity(x)).ToList();
             var betterCount = better.Count;
             var worseCount = worse.Count;
             
@@ -69,18 +94,18 @@ namespace ResultsComparer
             Console.WriteLine();
         }
 
-        private static double GetRatio((string id, Benchmark baseResult, Benchmark diffResult) result) => GetRatio(result.baseResult, result.diffResult);
+        private static double GetRatio((string id, Benchmark baseResult, Benchmark diffResult) result, bool medians) => GetRatio(result.baseResult, result.diffResult, medians);
 
         private static void PrintTable((string id, Benchmark baseResult, Benchmark diffResult)[] notSame, CommandLineOptions args)
         {
             var data = notSame
-                .OrderByDescending(result => GetRatio(result.baseResult, result.diffResult))
+                .OrderByDescending(result => GetRatio(result.baseResult, result.diffResult, args.UseMedians))
                 .Select(result => new
                 {
                     Id = result.id,
-                    DisplayValue = GetRatio( result.baseResult, result.diffResult),
-                    BaseMedian = result.baseResult.Statistics.Median,
-                    DiffMedian = result.diffResult.Statistics.Median,
+                    Scale = GetRatio( result.baseResult, result.diffResult, args.UseMedians),
+                    BaseValue = args.UseMedians ? result.baseResult.Statistics.Median: result.baseResult.Statistics.Mean,
+                    DiffValue = args.UseMedians ? result.diffResult.Statistics.Median: result.diffResult.Statistics.Mean,
                     Modality = GetModalInfo(result.baseResult) ?? GetModalInfo(result.diffResult)
                 })
                 .ToArray();
@@ -92,7 +117,7 @@ namespace ResultsComparer
                 return;
             }
 
-            var table = data.ToMarkdownTable().WithHeaders("base/diff", "Base Median (ns)", "Diff Median (ns)", "Modality");
+            var table = data.ToMarkdownTable().WithHeaders($"Comparison ({(args.UseMedians ? "medians" : "means")})", "Scale", "Base Value (ns)", "Diff Value (ns)", "Modality");
 
             foreach (var line in table.ToMarkdown().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
                 Console.WriteLine($"| {line.TrimStart()}|"); // the table starts with \t and does not end with '|' and it looks bad so we fix it
@@ -100,20 +125,12 @@ namespace ResultsComparer
             Console.WriteLine();
         }
 
-        private static (string id, Benchmark baseResult, Benchmark diffResult)[] RescaleResults(CommandLineOptions args)
+        private static (string id, Benchmark baseResult, Benchmark diffResult)[] CompareResults(IEnumerable<BdnResult> baseResults,
+            IEnumerable<BdnResult> diffResults, IEnumerable<string> baseLines)
         {
-            var baseFiles = GetFilesToParse(args.BasePath);
-            var diffFiles = GetFilesToParse(args.DiffPath);
-
-            if (!baseFiles.Any() || !diffFiles.Any())
-                throw new ArgumentException($"Provided paths contained no {FullBdnJsonFileExtension} files.");
-
-            var baseResults = baseFiles.Select(ReadFromFile);
-            var diffResults = diffFiles.ToDictionary(Path.GetFileName, ReadFromFile);
-
-            var benchmarkIdToDiffResults = diffResults.Values
+            var benchmarkIdToDiffResults = diffResults
                 .SelectMany(result => result.Benchmarks.Where(x => x.Statistics != null))
-                .Where(benchmarkResult => args.Baselines.Contains(benchmarkResult.MethodTitle))
+                .Where(benchmarkResult => baseLines.Contains(benchmarkResult.MethodTitle))
                 .ToDictionary(benchmarkResult => benchmarkResult.FullName, benchmarkResult => benchmarkResult);
 
             var baselineResults = baseResults
@@ -121,22 +138,7 @@ namespace ResultsComparer
                 .ToDictionary(benchmarkResult => benchmarkResult.FullName, benchmarkResult => benchmarkResult) // we use ToDictionary to make sure the results have unique IDs
                 .Where(baseResult => benchmarkIdToDiffResults.ContainsKey(baseResult.Key))
                 .Select(baseResult => (baseResult.Key, baseResult.Value, benchmarkIdToDiffResults[baseResult.Key])).ToArray();
-
-            if (baselineResults.Length == 0)
-                return baselineResults;
-
-            var scaleFactor = baselineResults.Average(GetRatio);
             
-            foreach (var diffResult in diffResults) 
-            {
-                foreach (var benchmark in diffResult.Value.Benchmarks)
-                {
-                    benchmark.RescaleValues(scaleFactor);
-                }
-
-                WriteToFile(diffResult.Value, Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension)));
-            }
-
             return baselineResults;
         }
 
@@ -167,7 +169,10 @@ namespace ResultsComparer
             return null;
         }
 
-        private static double GetRatio(Benchmark baseResult, Benchmark diffResult) => baseResult.Statistics.Median / diffResult.Statistics.Median;
+        private static double GetRatio(Benchmark baseResult, Benchmark diffResult, bool medians)
+        {
+            return medians ? baseResult.Statistics.Median / diffResult.Statistics.Median : baseResult.Statistics.Mean / diffResult.Statistics.Mean;
+        }
 
         private static BdnResult ReadFromFile(string resultFilePath)
         {

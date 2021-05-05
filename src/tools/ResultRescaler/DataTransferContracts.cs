@@ -132,6 +132,13 @@ namespace DataTransferContracts // generated with http://json2csharp.com/#
             {
                 measurement.Nanoseconds *= scaleFactor;
             }
+
+            Statistics.Mean *= scaleFactor;
+            Statistics.Variance *= scaleFactor;
+            Statistics.StandardDeviation *= scaleFactor;
+            Statistics.Min *= scaleFactor;
+            Statistics.Max *= scaleFactor;
+            Statistics.Median *= scaleFactor;
         }
     }
 
