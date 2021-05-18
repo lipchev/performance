@@ -130,7 +130,7 @@ namespace ResultsComparer
         {
             var benchmarkIdToDiffResults = diffResults
                 .SelectMany(result => result.Benchmarks.Where(x => x.Statistics != null))
-                .Where(benchmarkResult => baseLines.Contains(benchmarkResult.MethodTitle))
+                .Where(benchmarkResult => baseLines.Any(b => (benchmarkResult.Namespace + benchmarkResult.Type).EndsWith(b) || benchmarkResult.FullName.Contains(b)))
                 .ToDictionary(benchmarkResult => benchmarkResult.FullName, benchmarkResult => benchmarkResult);
 
             var baselineResults = baseResults

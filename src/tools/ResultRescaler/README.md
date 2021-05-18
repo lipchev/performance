@@ -11,7 +11,7 @@ It can be used to rescale:
 All you need to provide is:
 * `--base` - path to folder/file with baseline results
 * `--diff` - path to folder/file with diff results
-* `--baselines`  - a list of baseline method to use as 'stable'
+* `--baselines`  - the list of benchmarks (type | namespace + type | full-name) to use as 'stable-baselines
 * `--output`  - path to folder/file with diff results
 
 Optional arguments:

@@ -20,7 +20,7 @@ namespace ResultsComparer
         [Option('o', "output", HelpText = "The folder to store the rescaled JSON results.")]
         public string OutputPath { get; set; }
 
-        [Option('b', "baselines", HelpText = "The name of the categories that is used as a 'stable-baselines'.")]
+        [Option('b', "baselines", HelpText = "The list of benchmarks (type | namespace + type | full-name) to use as 'stable-baselines'.")]
         public IEnumerable<string> Baselines { get; set; }
 
         [Option('m', "medians", HelpText = "Use the medians for determining the scale factor (default is 'means').")]
