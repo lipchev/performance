@@ -11,16 +11,16 @@ namespace ResultsComparer
 {
     public class CommandLineOptions
     {
-        [Option("base", HelpText = "Path to the folder/file with base results.")]
+        [Option('b', "base", HelpText = "Path to the folder/file with base results.")]
         public string BasePath { get; set; }
 
-        [Option("diff", HelpText = "Path to the folder/file with diff results.")]
+        [Option('d', "diff", HelpText = "Path to the folder/file with diff results.")]
         public string DiffPath { get; set; }
 
         [Option('o', "output", HelpText = "The folder to store the rescaled JSON results.")]
         public string OutputPath { get; set; }
 
-        [Option('b', "baselines", HelpText = "The list of benchmarks (type | namespace + type | full-name) to use as 'stable-baselines'.")]
+        [Option('s', "stable", HelpText = "The list of benchmarks (type | namespace + type | full-name) to use as 'stable-baselines'.")]
         public IEnumerable<string> Baselines { get; set; }
 
         [Option('m', "medians", HelpText = "Use the medians for determining the scale factor (default is 'means').")]
