@@ -39,7 +39,7 @@ namespace ResultsComparer
                 throw new ArgumentException($"Provided paths contained no {FullBdnJsonFileExtension} files.");
 
             var baseResults = baseFiles.Select(ReadFromFile);
-            var diffResults = diffFiles.ToDictionary(Path.GetFileName, ReadFromFile);
+            var diffResults = diffFiles.ToDictionary(x => x, ReadFromFile);
 
             var notSame = CompareResults(baseResults, diffResults.Values, args.Baselines);
 
@@ -62,7 +62,7 @@ namespace ResultsComparer
                     benchmark.RescaleValues(scaleFactor);
                 }
 
-                var resultFilePath = Path.Combine(args.OutputPath, diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
+                var resultFilePath = Path.Combine(args.OutputPath, Path.GetFileName(diffResult.Key).Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
                 WriteToFile(diffResult.Value, resultFilePath);
                 Console.WriteLine("Rescaled results saved to '{0}'.", resultFilePath);
             }
