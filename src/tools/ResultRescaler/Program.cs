@@ -63,7 +63,7 @@ namespace ResultsComparer
 
                 var resultFilePath = string.IsNullOrEmpty(args.OutputPath)
                     ? diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension)
-                    : Path.Combine(args.OutputPath, Path.GetFileName(diffResult.Key).Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
+                    : Path.Combine(args.OutputPath, Path.GetFileName(diffResult.Key)!);
                 WriteToFile(diffResult.Value, resultFilePath);
                 Console.WriteLine("Rescaled results saved to '{0}'.", resultFilePath);
             }
