@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -62,7 +61,9 @@ namespace ResultsComparer
                     benchmark.RescaleValues(scaleFactor);
                 }
 
-                var resultFilePath = Path.Combine(args.OutputPath, Path.GetFileName(diffResult.Key).Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
+                var resultFilePath = string.IsNullOrEmpty(args.OutputPath)
+                    ? diffResult.Key.Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension)
+                    : Path.Combine(args.OutputPath, Path.GetFileName(diffResult.Key).Replace(FullBdnJsonFileExtension, RescaledBdnJsonFileExtension));
                 WriteToFile(diffResult.Value, resultFilePath);
                 Console.WriteLine("Rescaled results saved to '{0}'.", resultFilePath);
             }

@@ -17,7 +17,7 @@ namespace ResultsComparer
         [Option('d', "diff", HelpText = "Path to the folder/file with diff results.")]
         public string DiffPath { get; set; }
 
-        [Option('o', "output", HelpText = "The folder to store the rescaled JSON results.")]
+        [Option('o', "output", HelpText = "Optional folder to store the rescaled JSON results (a '*-report-rescaled.json' is otherwise placed along side the diff '*-report-full.json').")]
         public string OutputPath { get; set; }
 
         [Option('s', "stable", HelpText = "The list of benchmarks (type | namespace + type | full-name) to use as 'stable-baselines'.")]
@@ -32,8 +32,10 @@ namespace ResultsComparer
         {
             get
             {
-                yield return new Example(@"Compare the results stored in 'C:\results\win' (base) vs 'C:\results\unix' (diff) using 5% threshold.",
+                yield return new Example(@"Compare the results stored in 'C:\results\win' (base) vs 'C:\results\unix' (diff) using 5% threshold, storing the result (with the original file-name) to 'C:\results\unix\rescaled'.",
                     new CommandLineOptions { BasePath = @"C:\results\win", DiffPath = @"C:\results\unix", Baselines = new []{"StableBaseline"}, OutputPath =  @"C:\results\unix\rescaled" });
+                yield return new Example(@"Compare the results stored in 'C:\project\benchmarks\prod' (base) vs 'C:\project\benchmarks\dev' (diff) using 5% threshold, creating a '*-report-rescaled.json' next to each '*-report-full.json'.",
+                    new CommandLineOptions { BasePath = @"C:\project\benchmarks\prod", DiffPath = @"C:\project\benchmarks\dev", Baselines = new []{"StableBaseline"}});
             }
         }
     }
